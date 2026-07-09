@@ -1,291 +1,247 @@
-# Lark Agentx - 你的飞书 AI 助手 🚀
+# RM Lark Agent
 
-[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
-[![Node.js Version](https://img.shields.io/badge/nodejs-18%2B-blue)](https://nodejs.org/zh-cn/)
+一个基于飞书 Web 账号 Cookie 的个人 AI 助手原型。它会监听飞书消息、记录聊天到 MySQL，并在私聊、`/run` 指令或群聊触发词下调用大模型和 MCP 工具回复。
 
-一个基于飞书(Lark)的AI Agent，实现大模型通过飞书进行函数调用和消息处理。
+当前版本用于快速验证类似 Aily 的飞书助手体验，不是正式的飞书开放平台应用。
 
+## 当前能力
 
-**无需配置飞书机器人，你的飞书账号即是AI助手。**
+- 监听飞书私聊和群聊新消息
+- 将文本消息存入 MySQL
+- 私聊默认自动回复
+- 群聊默认只在 `/run` 或触发词命中时回复
+- 回复时带当前会话最近若干条上下文
+- 支持大模型自动选择 MCP 工具
+- 支持群聊总结、待办提取、历史消息搜索
+- 支持天气、时间、运势、发消息等示例工具
 
+## 重要说明
 
-**只需定义函数和注释，你的飞书机器人会自动根据场景调用。**
+这个项目使用 `LARK_COOKIE` 模拟飞书 Web 登录态：
 
+- Cookie 等同于登录凭证，不要提交到 GitHub，不要发给别人。
+- Cookie 会过期，失效后需要重新从飞书网页版复制。
+- 该方案适合个人原型验证，不适合团队正式生产环境。
+- 如果要做成长期稳定产品，建议迁移到飞书开放平台应用、OAuth、事件订阅和官方 OpenAPI。
 
-## 项目概述 🌟
+## 目录结构
 
-Lark Agentx是一个现代化的Python应用程序，能够:
-
-- 📊 逆向飞书Protobuf格式传输的Websockets和API，监听并记录消息
-- 🤖 提供自定义函数供大模型调用
-- 🔄 实现基于MCP (Model Context Protocol) 的函数调用框架
-- 💾 使用SQLAlchemy将消息存储到MySQL数据库
-
-## 效果图🧸
-
-<div align="center">
-  <img src="static/resource/back_end.png" width="600" alt="后台日志">
-  <br>
-  <em>图1: 后台日志</em>
-</div>
-
-
-<div align="center">
-  <img src="static/resource/front_end_1.png" width="600" alt="聊天数据库查询">
-  <br>
-  <em>图2: 聊天数据库查询</em>
-</div>
-
-<div align="center">
-  <img src="static/resource/front_end_2.png" width="600" alt="天气查询"> 
-  <br>
-  <em>图3: 天气查询</em>
-</div>
-
-<div align="center">
-  <img src="static/resource/functions.png" width="600" alt="注册函数"> 
-  <br>
-  <em>图4: 简单注册函数，只需定义函数和注释</em>
-</div>
-
-## ✨ 功能特点
-
-- **函数注册机制**: 简单直观的函数注册装饰器
-- **消息自动处理**: 记录所有接收到的消息（私聊和群聊）
-- **异步处理**: 采用async/await模式进行异步通信
-- **数据持久化**: 使用SQLAlchemy将消息存储在MySQL数据库中
-- **灵活配置**: 通过环境变量进行配置
-- **容器化部署**: 支持Docker快速部署
-- **智能函数调用**: AI会根据用户输入的文字自动分析并调用最匹配的函数，开发者只需添加函数及其注释描述
-
-## 📦 当前支持的函数
-
-项目目前内置了以下函数供大模型调用:
-
-| 函数名 | 描述 |
-|-------|------|
-| `tell_joke` | 讲一个随机笑话 |
-| `get_time` | 获取当前时间 |
-| `fortune` | 抽取一个随机运势 |
-| `get_weather` | 获取城市天气 |
-| `count_daily_speakers` | 获取今天发言的人数统计 |
-| `get_top_speaker_today` | 获取今天发言最多的用户 |
-| `send_message` | 给指定用户发送消息 |
-| `list_tools` | 列出所有可用的工具及其描述 |
-| `extra_order_from_content` | 提取文字中的订单信息，包括订单号、商品名称、数量等 |
-
-
-你可以通过在飞书中输入触发指令后跟要执行的操作来调用这些功能，例如: `/run 讲个笑话`
-
-## 📂 项目结构
-
-```
-project/
-├── app/                    # 应用程序模块
-│   ├── api/                # API相关模块
-│   │   ├── auth.py         # 认证模块
-│   │   └── lark_client.py  # 飞书客户端
-│   ├── config/             # 配置模块
-│   │   └── settings.py     # 应用配置
-│   ├── core/               # 核心业务逻辑
-│   │   ├── mcp_server.py   # MCP服务器（函数注册和处理）
-│   │   ├── llm_service.py  # LLM服务
-│   │   └── message_service.py  # 消息处理服务
-│   ├── db/                 # 数据库相关
-│   │   ├── models.py       # 数据模型
-│   │   └── session.py      # 数据库会话管理
-│   └── utils/              # 工具函数
-├── builder/                # 请求构建器
-├── extension/              # 扩展功能
-│   └── weather_api/        # 天气API集成
-├── static/                 # 静态资源
-│   ├── resource/           # 图片资源
-│   ├── proto_pb2.py        # 协议定义
-│   └── lark_decrypt.js     # 飞书解密工具
-├── .env                    # 环境变量
-├── main.py                 # 应用入口
-├── requirements.txt        # 项目依赖
-├── docker-compose.yml      # Docker Compose配置
-└── Dockerfile              # Docker配置
+```text
+.
+├── app/
+│   ├── api/                # 飞书账号接口与认证
+│   ├── config/             # 环境变量配置
+│   ├── core/               # LLM、MCP、消息处理
+│   ├── db/                 # SQLAlchemy 模型和会话
+│   └── utils/
+├── builder/                # 飞书 protobuf 请求构造
+├── extension/              # 扩展能力，例如天气
+├── static/                 # proto、解密脚本和资源
+├── docker-compose.yml
+├── Dockerfile
+├── main.py
+├── requirements.txt
+└── .env.example
 ```
 
-## 🛠️ 自定义函数开发
+## 快速复现
 
-在 `app/core/mcp_server.py` 文件中，您可以使用 `@register_tool` 装饰器添加您自己的自定义函数:
+推荐使用 Docker Compose。mentor 或其他复现者不需要使用你的 `.env`，每个人都应该配置自己的 Cookie 和 API Key。
 
-```python
-@register_tool(name="tell_joke", description="讲一个随机笑话")
-def tell_joke() -> str:
-    jokes = [
-        "为什么程序员都喜欢黑色？因为他们不喜欢 bug 光。",
-        "Python 和蛇有什么共同点？一旦缠上你就放不下了。",
-        "为什么 Java 开发者很少被邀去派对？因为他们总是抛出异常。",
-    ]
-    return random.choice(jokes)
+### 1. 克隆仓库
 
-@register_tool(name="send_message", description="给指定用户发送消息 {user:用户名称 content:消息内容}")
-def send_message(user: str, content: str) -> str:
-    """给指定用户发送私信"""
-    lark_client = LarkClient(get_auth())
-    # ... 实现逻辑 ...
-    return f"成功向 {user} 发送了私信: '{content}'"
-```
-
-**重要**: 只需添加函数和对应的描述，AI会根据用户的文字自动分析并调用最匹配的函数，无需手动实现函数匹配逻辑。
-
-## 🔧 环境要求
-
-- Python 3.10+
-- Node.js 18+
-- MySQL数据库
-
-## 📦 安装方法
-
-### 使用本地环境
-
-1. 安装依赖:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. Windows用户注意:
-   Windows系统需要额外安装以下依赖:
-   ```bash
-   pip install win-inet-pton==1.1.0
-   ```
-
-### 使用Docker
-
-方法一：单独构建镜像
 ```bash
-# 构建镜像 
-docker build -t feishuapp .
-
-# 运行容器 需要外部mysql 通过docker网关连接宿主机mysql 推荐--env-file
-docker run -it feishuapp bash
+git clone <repo-url>
+cd RM_LarkAgent
 ```
 
-方法二：使用Docker Compose（推荐）
+如果需要使用当前 MVP 分支：
+
 ```bash
-# 启动所有服务（应用和数据库）
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f
-
-# 停止所有服务
-docker-compose down
+git checkout codex/lark-assistant-mvp
 ```
 
-使用Docker Compose可以一键启动整个应用环境，包括MySQL数据库和应用服务，更加方便和高效。
+### 2. 创建配置文件
 
-## 🛠️ 配置说明
-
-复制`.env.example`文件命名为`.env`文件，包含以下配置:
-
+```bash
+cp .env.example .env
 ```
-# 数据库设置
-DB_HOST=localhost
+
+编辑 `.env`：
+
+```env
+DB_HOST=db
 DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=123456
+DB_USER=lark_user
+DB_PASSWORD=lark_password_123
 DB_NAME=lark_messages
 
-# 飞书的Cookie设置 - 只需配置LARK_COOKIE即可，告别飞书机器人
-LARK_COOKIE=""
+LARK_COOKIE='从飞书网页版 Network 请求头中复制的 Cookie'
 
-# 调用函数的触发前缀 （以FUNCTION_TRIGGER_FLAG开头的消息会被大模型解析，所有消息都会被记录到数据库，无论是否以该前缀开头）
 FUNCTION_TRIGGER_FLAG="/run"
-
-# 私聊自动回复，默认开启。关闭后只有 FUNCTION_TRIGGER_FLAG 会触发
 AUTO_REPLY_PRIVATE="true"
-
-# 群聊自动回复，默认关闭。关闭时只有 FUNCTION_TRIGGER_FLAG 或 GROUP_TRIGGER_KEYWORDS 会触发
 AUTO_REPLY_GROUP="false"
-
-# 群聊触发关键词，英文逗号分隔
 GROUP_TRIGGER_KEYWORDS="@助手,@AI Bot,助手"
-
-# 发送给大模型的最近聊天上下文条数
 CONTEXT_MESSAGE_LIMIT="12"
 
-# 机器人发言前缀
 AI_BOT_PREFIX="Lark AI Bot:"
 
-# OpenAI API配置 默认是通义千问的，满足OpenAI的大模型厂商都可以
-OPENAI_API_KEY=""
-OPENAI_API_BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1"
-OPENAI_API_MODEL="qwen-plus"
+OPENAI_API_KEY="你的 OpenAI 兼容 API Key"
+OPENAI_API_BASE_URL="https://api.deepseek.com"
+OPENAI_API_MODEL="deepseek-chat"
 ```
 
-## 🚀 使用指南
+注意：`LARK_COOKIE` 建议用英文单引号包起来，避免 Cookie 里的 `$` 被 Docker Compose 当成环境变量解析。
 
-### 运行应用程序
+### 3. 获取 LARK_COOKIE
 
-方法一：直接运行
+1. 打开飞书网页版并登录。
+2. 打开浏览器开发者工具，进入 Network。
+3. 勾选 Disable cache，刷新页面。
+4. 找到 `robotega.feishu.cn` 或 `internal-api-lark-api.feishu.cn` 的请求。
+5. 在 Headers 的 Request Headers 里复制 `Cookie` 右侧完整值。
+6. 粘贴到 `.env` 的 `LARK_COOKIE`。
+
+不要把 Cookie 发给别人，也不要提交到仓库。
+
+### 4. 启动
+
 ```bash
-python main.py
+docker compose up -d --build
 ```
 
-方法二：使用Docker Compose
+如果你的环境使用旧版 Compose：
+
 ```bash
-docker-compose up -d
+docker-compose up -d --build
 ```
 
-应用程序将:
-1. 初始化MCP服务器
-2. 连接到飞书API并使用你的飞书账号作为AI助手
-3. 监听传入的消息
-4. 处理并执行大模型通过飞书发起的函数调用
-5. 将消息存储在MySQL数据库中
+查看日志：
 
+```bash
+docker compose logs -f app
+```
 
-## 🗄️ 数据库结构
+正常日志会包含：
 
-应用程序将消息存储在`messages`表中，该表具有以下结构:
+```text
+初始化数据库...
+数据库初始化成功.
+初始化认证...
+认证初始化成功.
+创建 Lark 客户端...
+Lark 客户端创建成功.
+连接到 Lark WebSocket...
+开始接收消息...
+```
 
-| 列名           | 类型           | 描述                      |
-|----------------|---------------|---------------------------|
-| id             | INT (PK)      | 主键                      |
-| user_name      | VARCHAR(255)  | 消息发送者的名称           |
-| user_id        | VARCHAR(255)  | 发送者的飞书用户ID         |
-| content        | TEXT          | 消息内容                  |
-| is_group_chat  | BOOLEAN       | 消息是否来自群聊           |
-| group_name     | VARCHAR(255)  | 群聊名称（如适用）         |
-| chat_id        | VARCHAR(255)  | 聊天ID                    |
-| message_time   | DATETIME      | 消息发送时间               |
-| created_at     | DATETIME      | 记录创建时间               |
+## 使用方式
 
-## 🤝 贡献指南
+私聊 Cookie 对应的飞书账号：
 
-欢迎贡献！请随时提交Pull Request。
+```text
+你好
+```
 
-1. Fork这个仓库
-2. 创建您的特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交您的更改 (`git commit -m '添加一些很棒的特性'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 打开Pull Request
+群聊或私聊使用指令：
 
-## 🐛 问题与支持
+```text
+/run 现在几点
+/run 总结最近聊天
+/run 提取最近聊天里的待办
+/run 搜索一下 报名
+```
 
-如果您遇到任何问题或有疑问，请[提交issue](https://github.com/cv-cat/LarkAgentX/issues)或访问我们的[讨论论坛](https://github.com/cv-cat/LarkAgentX/discussions)。
+群聊默认不会自动回复全部消息。可以使用触发词：
 
-## 📈 Star 趋势
-<a href="https://www.star-history.com/#cv-cat/LarkAgentX&Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=cv-cat/LarkAgentX&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=cv-cat/LarkAgentX&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=cv-cat/LarkAgentX&type=Date" />
- </picture>
-</a>
+```text
+@助手 总结一下刚才讨论
+助手 提取最近待办
+```
 
+如果 `AUTO_REPLY_GROUP="true"`，群聊所有文本消息都会触发助手回复，谨慎开启。
 
-## 🍔 交流群
+## 内置工具
 
-如果你对爬虫和 AI Agent 感兴趣，请加作者主页 wx 通过邀请加入群聊
+| 工具名 | 说明 |
+| --- | --- |
+| `list_tools` | 列出可用工具 |
+| `get_time` | 获取当前时间 |
+| `get_weather` | 查询城市天气 |
+| `tell_joke` | 讲一个随机笑话 |
+| `fortune` | 抽取随机运势 |
+| `count_daily_speakers` | 统计今天发言人数 |
+| `get_top_speaker_today` | 查询今天发言最多的人 |
+| `send_message` | 给指定用户发送私信 |
+| `extra_order_from_content` | 提取订单信息 |
+| `summarize_recent_chat` | 总结最近聊天 |
+| `extract_todos_from_recent_chat` | 从最近聊天提取待办 |
+| `search_messages` | 搜索历史入库消息 |
 
-ps: 请加群21、22、23，人满或者过期 issue | wx 提醒
+## 配置项
 
-| group21 | group22 | group23 |
-|:--:|:--:|:--:|
-| <img width="280" alt="group21" src="https://github.com/user-attachments/assets/fdde52de-b2b9-48a5-a996-cd83ab018413" /> | <img width="280" alt="group22" src="https://github.com/user-attachments/assets/86ee2c3c-7f9d-4f0f-81f0-997edaf2b255" /> | <img width="280" alt="group23" src="https://github.com/user-attachments/assets/288fb4f0-2c4d-4b5c-96bf-2a271233339b" /> |
+| 变量 | 说明 |
+| --- | --- |
+| `DB_HOST` | Docker Compose 下使用 `db` |
+| `DB_PORT` | MySQL 端口 |
+| `DB_USER` | MySQL 用户名 |
+| `DB_PASSWORD` | MySQL 密码 |
+| `DB_NAME` | MySQL 数据库名 |
+| `LARK_COOKIE` | 飞书 Web Cookie |
+| `FUNCTION_TRIGGER_FLAG` | 指令触发前缀，默认 `/run` |
+| `AUTO_REPLY_PRIVATE` | 私聊是否自动回复 |
+| `AUTO_REPLY_GROUP` | 群聊是否自动回复所有消息 |
+| `GROUP_TRIGGER_KEYWORDS` | 群聊触发关键词，英文逗号分隔 |
+| `CONTEXT_MESSAGE_LIMIT` | 发送给大模型的最近上下文条数 |
+| `AI_BOT_PREFIX` | 机器人回复前缀 |
+| `OPENAI_API_KEY` | OpenAI 兼容 API Key |
+| `OPENAI_API_BASE_URL` | OpenAI 兼容接口地址 |
+| `OPENAI_API_MODEL` | 模型名 |
+
+## 开发自定义工具
+
+在 `app/core/mcp_server.py` 中使用 `@register_tool`：
+
+```python
+@register_tool(name="get_time", description="Get the current time")
+def get_time() -> str:
+    now = datetime.datetime.now()
+    return f"当前时间是 {now.strftime('%Y-%m-%d %H:%M:%S')}"
+```
+
+工具的 `description` 会提供给大模型，用于自动判断何时调用。
+
+## 常见问题
+
+### Docker 提示 5000 端口占用
+
+当前项目不需要暴露 5000 端口，`docker-compose.yml` 已去掉 app 端口映射。如果仍遇到端口冲突，确认使用的是最新配置。
+
+### Docker 提示 `g0 variable is not set`
+
+这是 Cookie 中的 `$g0` 被 Compose 解析成变量。把 `LARK_COOKIE` 改成单引号：
+
+```env
+LARK_COOKIE='...$g0...'
+```
+
+### 日志显示认证失败
+
+通常是 Cookie 不完整或已过期。重新登录飞书网页版，再复制新的 Request Headers Cookie。
+
+### 收不到回复
+
+检查：
+
+- `docker compose logs -f app` 是否显示开始接收消息
+- 消息是否发给 Cookie 对应账号，或发在该账号所在群
+- 群聊是否使用 `/run` 或触发词
+- `OPENAI_API_KEY`、`OPENAI_API_BASE_URL`、`OPENAI_API_MODEL` 是否正确
+
+## 后续方向
+
+- 接入本地个人知识库
+- 为不同群绑定不同知识库
+- 增加定时总结和主动提醒
+- 从 Cookie 账号助手迁移到飞书开放平台应用
+- 使用官方 OAuth 和事件订阅实现多用户授权
