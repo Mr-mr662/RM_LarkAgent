@@ -13,6 +13,7 @@
 - 回复时带当前会话最近若干条上下文
 - 支持大模型自动选择 MCP 工具
 - 支持群聊总结、待办提取、历史消息搜索
+- 支持本地 `knowledge/` 个人知识库检索
 - 支持天气、时间、运势、发消息等示例工具
 
 ## 重要说明
@@ -83,6 +84,9 @@ AUTO_REPLY_PRIVATE="true"
 AUTO_REPLY_GROUP="false"
 GROUP_TRIGGER_KEYWORDS="@助手,@AI Bot,助手"
 CONTEXT_MESSAGE_LIMIT="12"
+KNOWLEDGE_DIR="knowledge"
+KNOWLEDGE_MAX_RESULTS="5"
+KNOWLEDGE_CHUNK_SIZE="1200"
 
 AI_BOT_PREFIX="Lark AI Bot:"
 
@@ -150,6 +154,7 @@ Lark 客户端创建成功.
 /run 总结最近聊天
 /run 提取最近聊天里的待办
 /run 搜索一下 报名
+/run 搜索知识库 报名规则
 ```
 
 群聊默认不会自动回复全部消息。可以使用触发词：
@@ -177,6 +182,33 @@ Lark 客户端创建成功.
 | `summarize_recent_chat` | 总结最近聊天 |
 | `extract_todos_from_recent_chat` | 从最近聊天提取待办 |
 | `search_messages` | 搜索历史入库消息 |
+| `list_knowledge_files` | 列出本地知识库文件 |
+| `reload_knowledge` | 重新加载本地知识库 |
+| `search_knowledge` | 搜索本地知识库 |
+
+## 本地个人知识库
+
+把 `.md` 或 `.txt` 文件放到 `knowledge/` 目录：
+
+```text
+knowledge/
+├── README.md
+├── faq.md
+├── rules.md
+└── meeting_notes.md
+```
+
+助手会在用户询问规章、流程、项目文档、FAQ、会议纪要等问题时优先调用 `search_knowledge`。
+
+常用指令：
+
+```text
+/run 列出知识库文件
+/run 重新加载知识库
+/run 搜索知识库 软件组 GitHub Pages 怎么更新
+```
+
+当前知识库检索是轻量关键词检索，不需要额外依赖。它适合先验证个人知识库体验；后续可以替换成向量检索。
 
 ## 配置项
 
@@ -193,6 +225,9 @@ Lark 客户端创建成功.
 | `AUTO_REPLY_GROUP` | 群聊是否自动回复所有消息 |
 | `GROUP_TRIGGER_KEYWORDS` | 群聊触发关键词，英文逗号分隔 |
 | `CONTEXT_MESSAGE_LIMIT` | 发送给大模型的最近上下文条数 |
+| `KNOWLEDGE_DIR` | 本地知识库目录 |
+| `KNOWLEDGE_MAX_RESULTS` | 默认知识库检索结果数 |
+| `KNOWLEDGE_CHUNK_SIZE` | 知识库切块字符数 |
 | `AI_BOT_PREFIX` | 机器人回复前缀 |
 | `OPENAI_API_KEY` | OpenAI 兼容 API Key |
 | `OPENAI_API_BASE_URL` | OpenAI 兼容接口地址 |

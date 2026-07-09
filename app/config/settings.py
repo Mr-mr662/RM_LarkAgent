@@ -30,6 +30,9 @@ class Settings:
         if item.strip()
     ]
     CONTEXT_MESSAGE_LIMIT = int(os.getenv("CONTEXT_MESSAGE_LIMIT", "12"))
+    KNOWLEDGE_DIR = os.getenv("KNOWLEDGE_DIR", "knowledge")
+    KNOWLEDGE_MAX_RESULTS = int(os.getenv("KNOWLEDGE_MAX_RESULTS", "5"))
+    KNOWLEDGE_CHUNK_SIZE = int(os.getenv("KNOWLEDGE_CHUNK_SIZE", "1200"))
 
     AI_BOT_PREFIX = os.getenv("AI_BOT_PREFIX", "AI Bot:")
 

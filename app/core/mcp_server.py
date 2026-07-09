@@ -17,10 +17,12 @@ from app.db.session import get_db_session, close_db_session
 from app.db.models import Message
 from app.api.auth import get_auth
 from app.api.lark_client import LarkClient
+from app.core.knowledge_service import KnowledgeService
 
 mcp = FastMCP("LARK_MCP_SERVER")
 registered_tools = []
 llm_service = LLMService()
+knowledge_service = KnowledgeService()
 
 
 def _clamp_limit(limit, default=20, max_value=100):
@@ -186,6 +188,46 @@ def search_messages(
         return f"搜索失败: {str(e)}"
     finally:
         close_db_session(db)
+
+
+@register_tool(name="list_knowledge_files", description="列出本地个人知识库中的文件")
+def list_knowledge_files() -> str:
+    files = knowledge_service.list_files()
+    if not files:
+        return "知识库目录为空。请在 knowledge/ 目录中添加 .md 或 .txt 文件。"
+    return "当前知识库文件：\n" + "\n".join(f"- {item}" for item in files)
+
+
+@register_tool(name="reload_knowledge", description="重新加载本地个人知识库文件")
+def reload_knowledge() -> str:
+    count = knowledge_service.reload()
+    files = knowledge_service.list_files()
+    return f"已重新加载知识库：{len(files)} 个文件，{count} 个片段。"
+
+
+@register_tool(
+    name="search_knowledge",
+    description="搜索本地个人知识库。适合回答规章、流程、项目文档、FAQ、会议纪要等问题"
+)
+def search_knowledge(
+    query: Annotated[str, "要搜索的问题或关键词"],
+    limit: Annotated[int, "返回片段数量，最多10条"] = 5
+) -> str:
+    results = knowledge_service.search(query, limit=_clamp_limit(limit, default=5, max_value=10))
+    if not results:
+        return f"没有在本地知识库中找到与「{query}」相关的内容。"
+
+    lines = [f"本地知识库中与「{query}」相关的内容："]
+    for index, (score, chunk) in enumerate(results, 1):
+        content = chunk.content.strip()
+        if len(content) > 900:
+            content = content[:900].rstrip() + "..."
+        lines.append(
+            f"\n[{index}] 来源: {chunk.title}\n"
+            f"相关度: {score:.2f}\n"
+            f"{content}"
+        )
+    return "\n".join(lines)
 
 
 @register_tool(name="tell_joke", description="Tell a random joke")
