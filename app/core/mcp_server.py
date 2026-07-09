@@ -23,6 +23,57 @@ registered_tools = []
 llm_service = LLMService()
 
 
+def _clamp_limit(limit, default=20, max_value=100):
+    try:
+        value = int(limit)
+    except (TypeError, ValueError):
+        value = default
+    return max(1, min(value, max_value))
+
+
+def _format_messages(messages):
+    lines = []
+    for message in messages:
+        timestamp = message.message_time.strftime("%Y-%m-%d %H:%M:%S") if message.message_time else ""
+        source = f"群聊:{message.group_name}" if message.is_group_chat and message.group_name else "私聊"
+        lines.append(f"{timestamp} [{source}] {message.user_name}: {message.content}")
+    return "\n".join(lines)
+
+
+def _get_recent_messages(chat_id="", limit=30):
+    db = get_db_session()
+    try:
+        query = db.query(Message)
+        if chat_id:
+            query = query.filter(Message.chat_id == str(chat_id))
+        rows = (
+            query.order_by(Message.message_time.desc(), Message.id.desc())
+            .limit(_clamp_limit(limit, default=30))
+            .all()
+        )
+        rows.reverse()
+        return rows
+    finally:
+        close_db_session(db)
+
+
+def _summarize_with_llm(system_prompt, content):
+    if not llm_service.is_available():
+        return "未在配置中设置 OPENAI_API_KEY，无法使用大模型生成结果。"
+    res = llm_service.chat_completion(
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": content},
+        ],
+        tools=None,
+    )
+    if res and res.choices:
+        answer = res.choices[0].message.content
+        if answer:
+            return answer
+    return "未能生成结果。"
+
+
 def register_tool(name: str, description: str):
     def decorator(func):
         mcp.tool(name=name, description=description)(func)
@@ -69,6 +120,72 @@ def extra_order_from_content(content: str) -> str:
         if content:
             return content
     return "未能提取到订单信息，请检查消息内容是否包含有效的订单信息。"
+
+
+@register_tool(
+    name="summarize_recent_chat",
+    description="总结最近聊天内容。参数 chat_id 可使用当前会话 chat_id，limit 表示最近消息数量"
+)
+def summarize_recent_chat(
+    chat_id: Annotated[str, "会话ID，默认使用当前会话"] = "",
+    limit: Annotated[int, "最近消息数量，最多100条"] = 50
+) -> str:
+    messages = _get_recent_messages(chat_id=chat_id, limit=limit)
+    if not messages:
+        return "没有找到可总结的聊天记录。"
+    content = _format_messages(messages)
+    return _summarize_with_llm(
+        "你是飞书群聊总结助手。请用中文总结聊天内容，包含：核心结论、重要进展、待确认问题。保持简洁。",
+        content
+    )
+
+
+@register_tool(
+    name="extract_todos_from_recent_chat",
+    description="从最近聊天中提取待办事项。参数 chat_id 可使用当前会话 chat_id，limit 表示最近消息数量"
+)
+def extract_todos_from_recent_chat(
+    chat_id: Annotated[str, "会话ID，默认使用当前会话"] = "",
+    limit: Annotated[int, "最近消息数量，最多100条"] = 50
+) -> str:
+    messages = _get_recent_messages(chat_id=chat_id, limit=limit)
+    if not messages:
+        return "没有找到可提取待办的聊天记录。"
+    content = _format_messages(messages)
+    return _summarize_with_llm(
+        "你是飞书待办提取助手。请从聊天中提取待办，按「事项 / 负责人 / 截止时间 / 来源」输出。没有明确负责人或时间就写「未明确」。",
+        content
+    )
+
+
+@register_tool(
+    name="search_messages",
+    description="搜索历史聊天消息。keyword 为关键词，chat_id 可限制在当前会话，limit 表示返回条数"
+)
+def search_messages(
+    keyword: Annotated[str, "要搜索的关键词"],
+    chat_id: Annotated[str, "会话ID，默认不限制"] = "",
+    limit: Annotated[int, "返回条数，最多50条"] = 10
+) -> str:
+    db = get_db_session()
+    try:
+        query = db.query(Message).filter(Message.content.ilike(f"%{keyword}%"))
+        if chat_id:
+            query = query.filter(Message.chat_id == str(chat_id))
+        rows = (
+            query.order_by(Message.message_time.desc(), Message.id.desc())
+            .limit(_clamp_limit(limit, default=10, max_value=50))
+            .all()
+        )
+        rows.reverse()
+        if not rows:
+            return f"没有搜索到包含「{keyword}」的消息。"
+        return _format_messages(rows)
+    except Exception as e:
+        logger.error(f"搜索历史消息时出错: {str(e)}")
+        return f"搜索失败: {str(e)}"
+    finally:
+        close_db_session(db)
 
 
 @register_tool(name="tell_joke", description="Tell a random joke")

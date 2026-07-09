@@ -197,7 +197,19 @@ LARK_COOKIE=""
 # 调用函数的触发前缀 （以FUNCTION_TRIGGER_FLAG开头的消息会被大模型解析，所有消息都会被记录到数据库，无论是否以该前缀开头）
 FUNCTION_TRIGGER_FLAG="/run"
 
-# 机器人发言前缀 （暂未使用）
+# 私聊自动回复，默认开启。关闭后只有 FUNCTION_TRIGGER_FLAG 会触发
+AUTO_REPLY_PRIVATE="true"
+
+# 群聊自动回复，默认关闭。关闭时只有 FUNCTION_TRIGGER_FLAG 或 GROUP_TRIGGER_KEYWORDS 会触发
+AUTO_REPLY_GROUP="false"
+
+# 群聊触发关键词，英文逗号分隔
+GROUP_TRIGGER_KEYWORDS="@助手,@AI Bot,助手"
+
+# 发送给大模型的最近聊天上下文条数
+CONTEXT_MESSAGE_LIMIT="12"
+
+# 机器人发言前缀
 AI_BOT_PREFIX="Lark AI Bot:"
 
 # OpenAI API配置 默认是通义千问的，满足OpenAI的大模型厂商都可以
@@ -277,4 +289,3 @@ ps: 请加群21、22、23，人满或者过期 issue | wx 提醒
 | group21 | group22 | group23 |
 |:--:|:--:|:--:|
 | <img width="280" alt="group21" src="https://github.com/user-attachments/assets/fdde52de-b2b9-48a5-a996-cd83ab018413" /> | <img width="280" alt="group22" src="https://github.com/user-attachments/assets/86ee2c3c-7f9d-4f0f-81f0-997edaf2b255" /> | <img width="280" alt="group23" src="https://github.com/user-attachments/assets/288fb4f0-2c4d-4b5c-96bf-2a271233339b" /> |
-

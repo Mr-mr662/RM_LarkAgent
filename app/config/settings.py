@@ -22,6 +22,14 @@ class Settings:
     LARK_WS_URL = "wss://msg-frontier.feishu.cn/ws/v2"
     
     FUNCTION_TRIGGER_FLAG = os.getenv("FUNCTION_TRIGGER_FLAG", "/run")
+    AUTO_REPLY_PRIVATE = os.getenv("AUTO_REPLY_PRIVATE", "true").lower() == "true"
+    AUTO_REPLY_GROUP = os.getenv("AUTO_REPLY_GROUP", "false").lower() == "true"
+    GROUP_TRIGGER_KEYWORDS = [
+        item.strip()
+        for item in os.getenv("GROUP_TRIGGER_KEYWORDS", "@助手,@AI Bot,助手").split(",")
+        if item.strip()
+    ]
+    CONTEXT_MESSAGE_LIMIT = int(os.getenv("CONTEXT_MESSAGE_LIMIT", "12"))
 
     AI_BOT_PREFIX = os.getenv("AI_BOT_PREFIX", "AI Bot:")
 
